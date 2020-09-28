@@ -1,0 +1,18 @@
+{
+    // IntelliSense を使用して利用可能な属性を学べます。
+    // 既存の属性の説明をホバーして表示します。
+    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            // VSCodeにて、F5実行したときに作者の意図(下記)通りに動かすための設定
+            // もともとの<repository_root>/chXX の階層で作業することを前提としている
+            "cwd": "${workspaceFolder}/common",
+            // VSCodeの設定 https://github.com/Microsoft/vscode-python/issues/4441
+        }
+    }
