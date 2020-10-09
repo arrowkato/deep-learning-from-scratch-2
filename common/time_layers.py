@@ -111,8 +111,10 @@ class LSTM:
         Wx, Wh, b = self.params
         N, H = h_prev.shape
 
+        # アフィン変換
         A = np.dot(x, Wx) + np.dot(h_prev, Wh) + b
 
+        # slice
         f = A[:, :H]
         g = A[:, H:2*H]
         i = A[:, 2*H:3*H]
@@ -123,7 +125,9 @@ class LSTM:
         i = sigmoid(i)
         o = sigmoid(o)
 
+        # 次の時刻の記憶セル:cの値を算出
         c_next = f * c_prev + g * i
+        # 次の時刻の隠れ状態:hの値を算出
         h_next = o * np.tanh(c_next)
 
         self.cache = (x, h_prev, c_prev, i, f, g, o, c_next)
@@ -149,6 +153,8 @@ class LSTM:
         do *= o * (1 - o)
         dg *= (1 - g ** 2)
 
+        # 図6-23 sliceノード順伝播と逆伝播 でいうところの逆伝播の実体
+        # np.hstack() 引数に与えられた配列を横方向に連結
         dA = np.hstack((df, dg, di, do))
 
         dWh = np.dot(h_prev.T, dA)
