@@ -8,15 +8,18 @@ from common.base_model import BaseModel
 
 class BetterRnnlm(BaseModel):
     '''
-     LSTMレイヤを2層利用し、各層にDropoutを使うモデル
-     [1]で提案されたモデルをベースとし、weight tying[2][3]を利用
+    LSTMレイヤを2層利用し、各層にDropoutを使うモデル
+    [1]で提案されたモデルをベースとし、weight tying[2][3]を利用
 
-     [1] Recurrent Neural Network Regularization (https://arxiv.org/abs/1409.2329)
-     [2] Using the Output Embedding to Improve Language Models (https://arxiv.org/abs/1608.05859)
-     [3] Tying Word Vectors and Word Classifiers (https://arxiv.org/pdf/1611.01462.pdf)
+    [1] Recurrent Neural Network Regularization (https://arxiv.org/abs/1409.2329)
+    [2] Using the Output Embedding to Improve Language Models (https://arxiv.org/abs/1608.05859)
+    [3] Tying Word Vectors and Word Classifiers (https://arxiv.org/pdf/1611.01462.pdf)
     '''
-    def __init__(self, vocab_size=10000, wordvec_size=650,
-                 hidden_size=650, dropout_ratio=0.5):
+    def __init__(self,
+                 vocab_size=10000,
+                 wordvec_size=650,
+                 hidden_size=650,
+                 dropout_ratio=0.5):
         V, D, H = vocab_size, wordvec_size, hidden_size
         rn = np.random.randn
 
@@ -29,14 +32,19 @@ class BetterRnnlm(BaseModel):
         lstm_b2 = np.zeros(4 * H).astype('f')
         affine_b = np.zeros(V).astype('f')
 
+        # 図6-36参照
+        # 改善ポイント
+        # 1. LSTM レイヤの多層化(ここでは 2 層)
+        # 2. Dropout を使用(深さ方向にのみ適用)
+        # 3. 重み共有(Embedding レイヤと Affine レイヤで重み共有)
         self.layers = [
             TimeEmbedding(embed_W),
-            TimeDropout(dropout_ratio),
-            TimeLSTM(lstm_Wx1, lstm_Wh1, lstm_b1, stateful=True),
-            TimeDropout(dropout_ratio),
-            TimeLSTM(lstm_Wx2, lstm_Wh2, lstm_b2, stateful=True),
-            TimeDropout(dropout_ratio),
-            TimeAffine(embed_W.T, affine_b)  # weight tying!!
+            TimeDropout(dropout_ratio),  # 2.
+            TimeLSTM(lstm_Wx1, lstm_Wh1, lstm_b1, stateful=True),  # 1.
+            TimeDropout(dropout_ratio),  # 2.
+            TimeLSTM(lstm_Wx2, lstm_Wh2, lstm_b2, stateful=True),  # 1.
+            TimeDropout(dropout_ratio),  # 2.
+            TimeAffine(embed_W.T, affine_b)  # 3. weight tying!!
         ]
         self.loss_layer = TimeSoftmaxWithLoss()
         self.lstm_layers = [self.layers[2], self.layers[4]]

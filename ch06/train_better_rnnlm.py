@@ -12,7 +12,6 @@ from common.util import eval_perplexity, to_gpu
 from dataset import ptb
 from better_rnnlm import BetterRnnlm
 
-
 # ハイパーパラメータの設定
 batch_size = 20
 wordvec_size = 650
@@ -43,8 +42,12 @@ trainer = RnnlmTrainer(model, optimizer)
 
 best_ppl = float('inf')
 for epoch in range(max_epoch):
-    trainer.fit(xs, ts, max_epoch=1, batch_size=batch_size,
-                time_size=time_size, max_grad=max_grad)
+    trainer.fit(xs,
+                ts,
+                max_epoch=1,
+                batch_size=batch_size,
+                time_size=time_size,
+                max_grad=max_grad)
 
     model.reset_state()
     ppl = eval_perplexity(model, corpus_val)
@@ -54,12 +57,13 @@ for epoch in range(max_epoch):
         best_ppl = ppl
         model.save_params()
     else:
+        # エポックごとに検証データでパープレキシティを評価し、
+        # その値が悪くなった場合にのみ学習係数(learning rate)を下げる。
         lr /= 4.0
         optimizer.lr = lr
 
     model.reset_state()
     print('-' * 50)
-
 
 # テストデータでの評価
 model.reset_state()
