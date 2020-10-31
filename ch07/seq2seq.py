@@ -7,6 +7,11 @@ from common.base_model import BaseModel
 
 class Encoder:
     def __init__(self, vocab_size, wordvec_size, hidden_size):
+        '''
+        vocab_size: 語彙数。"[0-9]","+"," "の合計13文字
+        wordvec_size: 文字ベクトルの次元数。いくつでもいいのでハイパーパラメータになる
+        hidden_size: LSTMの隠れ状態ベクトルの次元数。いくつでもいいのでハイパーパラメータになる
+        '''
         V, D, H = vocab_size, wordvec_size, hidden_size
         rn = np.random.randn
 
@@ -23,12 +28,18 @@ class Encoder:
         self.hs = None
 
     def forward(self, xs):
+        '''
+        xs:入力する文章(57+5_____ みたいなやつ   )
+        '''
         xs = self.embed.forward(xs)
         hs = self.lstm.forward(xs)
         self.hs = hs
         return hs[:, -1, :]
 
     def backward(self, dh):
+        '''
+        dh: Decoderから伝わってくる隠れ状態
+        '''
         dhs = np.zeros_like(self.hs)
         dhs[:, -1, :] = dh
 
