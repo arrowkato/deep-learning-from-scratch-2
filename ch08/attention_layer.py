@@ -54,7 +54,7 @@ class AttentionWeight:
         # dsはsを逆伝播させるときの行列
         ds = self.softmax.backward(da)
         dt = ds.reshape(N, T, 1).repeat(H, axis=2)
-        dhs = dt * hr  # hrの内積を取る意味がわからん
+        dhs = dt * hr  # アダマール積の逆伝播
         dhr = dt * hs
         dh = np.sum(dhr, axis=1)
 
@@ -109,7 +109,7 @@ class TimeAttention:
             self.layers.append(layer)
             self.attention_weights.append(layer.attention_weight)
 
-        # Affineレイヤに順伝播させる値(の一部)を返す
+        # Affineレイヤに順伝播させる値を返す
         return out
 
     def backward(self, dout):

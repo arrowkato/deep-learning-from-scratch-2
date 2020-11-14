@@ -22,9 +22,6 @@ class AttentionEncoder(Encoder):
         return hs  # 親クラスだと return hs[:, -1, :]
 
     def backward(self, dhs):
-        '''
-        wae
-        '''
         dout = self.lstm.backward(dhs)
         dout = self.embed.backward(dout)
         return dout
@@ -44,10 +41,10 @@ class AttentionDecoder:
 
         self.embed = TimeEmbedding(embed_W)
         self.lstm = TimeLSTM(lstm_Wx, lstm_Wh, lstm_b, stateful=True)
-        # TimeAttensionレイヤ追加 ch07/seq2seq.pyとの違い
+        # TimeAttentionレイヤ追加 ch07/seq2seq.pyとの違い
         self.attention = TimeAttention()
         self.affine = TimeAffine(affine_W, affine_b)
-        # TimeLSTMレイヤとAffineの間に、TimeAttensionレイヤを追加
+        # TimeLSTMレイヤとAffineの間に、TimeAttentionレイヤを追加
         layers = [self.embed, self.lstm, self.attention, self.affine]
 
         self.params, self.grads = [], []
@@ -56,6 +53,7 @@ class AttentionDecoder:
             self.grads += layer.grads
 
     def forward(self, xs, enc_hs):
+        # hsの最終行を取得
         h = enc_hs[:, -1]
         self.lstm.set_state(h)
 
@@ -64,7 +62,7 @@ class AttentionDecoder:
         c = self.attention.forward(enc_hs, dec_hs)
         # 図8-21参照
         # Affineレイヤの入力は下記の2つレイヤの結果なので、concatenateで行列を結合
-        # c: TimeAttensionの結果
+        # c: TimeAttentionの結果
         # dec_hs: TimeLSTMの結果
         out = np.concatenate((c, dec_hs), axis=2)
         score = self.affine.forward(out)
@@ -72,25 +70,29 @@ class AttentionDecoder:
         return score
 
     def backward(self, dscore):
-        # dout: affine -> TimeAttension and TimeLSTM
+        # dout: affine -> TimeAttention and TimeLSTM
         dout = self.affine.backward(dscore)
         N, T, H2 = dout.shape
         H = H2 // 2
 
-        # dc: TimeAffine -> TimeAttension
+        # dc: TimeAffine -> TimeAttention
         # ddec_hs0: -> TimeAffine -> Time LSTM
+        # np.concatenate((c, dec_hs), axis=2) の逆操作
         dc, ddec_hs0 = dout[:, :, :H], dout[:, :, H:]
-        # denc_hs: TimeAttension -> Encoder
-        # ddec_hs1: TimeAttension -> TimeLSTM
+        # denc_hs: TimeAttention -> Encoder
+        # ddec_hs1: TimeAttention -> TimeLSTM
         denc_hs, ddec_hs1 = self.attention.backward(dc)
-        # TimeAffine and TimeAttension -> TimeLSTM
+        # TimeAffine and TimeAttention -> TimeLSTM
         # 下手に展開しない方がわかりやすいかも
         # dout = self.lstm.backward(ddec_hs0 + ddec_hs1)
         ddec_hs = ddec_hs0 + ddec_hs1
         dout = self.lstm.backward(ddec_hs)
 
+        # hsの最終行の逆伝播。操作の実体は加算
         dh = self.lstm.dh
         denc_hs[:, -1] += dh
+
+        # TimeLSTM -> TimeEmbedding
         self.embed.backward(dout)
 
         return denc_hs
@@ -98,7 +100,7 @@ class AttentionDecoder:
     def generate(self, enc_hs, start_id, sample_size):
         '''
         文章の生成。ch07/seq2seq.generate()との違いは、
-        TimeAttensionレイヤが加わっただけ。
+        TimeAttentionレイヤが加わっただけ。
         '''
         sampled = []
         sample_id = start_id
@@ -110,7 +112,7 @@ class AttentionDecoder:
 
             out = self.embed.forward(x)
             dec_hs = self.lstm.forward(out)
-            c = self.attention.forward(enc_hs, dec_hs)
+            c = self.attention.forward(enc_hs, dec_hs)  # Attentionで追加された行
             out = np.concatenate((c, dec_hs), axis=2)
             score = self.affine.forward(out)
 
@@ -125,7 +127,7 @@ class AttentionSeq2seq(Seq2seq):
         args = vocab_size, wordvec_size, hidden_size
         # EncoderではなくAttentionEncoderを使用
         self.encoder = AttentionEncoder(*args)
-        # DecoderではなくAttensionDecoderを使用
+        # DecoderではなくAttentionDecoderを使用
         self.decoder = AttentionDecoder(*args)
         self.softmax = TimeSoftmaxWithLoss()
 
